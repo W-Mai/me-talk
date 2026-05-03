@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>Me Talk · 你在 AI 编程助手面前的样子</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #151a22;
+    --panel-soft: #1b2230;
+    --ink: #e6e8ec;
+    --ink-dim: #9aa4b2;
+    --accent: #7ab7ff;
+    --accent-2: #ffb86b;
+    --accent-3: #c3f584;
+    --border: #262e3d;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+                 "Helvetica Neue", Segoe UI, Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 40px 24px 120px; }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.3px; }
+  h2 {
+    margin: 56px 0 16px;
+    font-size: 21px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+  h3 { font-size: 17px; margin: 28px 0 10px; }
+  p  { color: var(--ink-dim); }
+  p.lede { color: var(--ink); font-size: 16px; }
+  small { color: var(--ink-dim); }
+  .subhead { color: var(--ink-dim); font-size: 14px; margin-top: 10px; }
+
+  .grid { display: grid; gap: 18px; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (max-width: 820px) { .g2, .g3, .g4 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .card.tight { padding: 14px 16px; }
+  .stat-num { font-size: 34px; font-weight: 600; letter-spacing: -0.5px; }
+  .stat-label { color: var(--ink-dim); font-size: 13px; margin-top: 2px; }
+
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--panel-soft);
+    color: var(--ink-dim);
+    margin-right: 6px;
+  }
+
+  blockquote {
+    margin: 0 0 10px;
+    padding: 10px 14px;
+    border-left: 3px solid var(--accent);
+    background: var(--panel-soft);
+    color: var(--ink);
+    font-size: 14px;
+    border-radius: 0 6px 6px 0;
+  }
+  blockquote .src {
+    display: block;
+    color: var(--ink-dim);
+    font-size: 12px;
+    margin-top: 6px;
+  }
+
+  ul, ol { color: var(--ink-dim); padding-left: 20px; }
+  li strong { color: var(--ink); }
+
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .bar-label { flex: 0 0 160px; color: var(--ink); font-size: 13px; }
+  .bar-rest  { flex: 1; background: var(--panel-soft); height: 14px; border-radius: 7px; overflow: hidden; }
+  .bar-fill  { height: 100%; background: linear-gradient(90deg, var(--accent) 0%, #b1d4ff 100%); }
+  .bar-val   { flex: 0 0 70px; text-align: right; color: var(--ink-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+  canvas { width: 100% !important; height: auto !important; max-height: 360px; }
+
+  .word-cloud { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+  .word-cloud span { color: var(--ink); opacity: .9; line-height: 1.1; }
+
+  footer { margin-top: 60px; color: var(--ink-dim); font-size: 13px; text-align: center; }
+
+  .highlight-number { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 600; }
+  code {
+    background: var(--panel-soft); padding: 1px 6px; border-radius: 4px;
+    font-size: 13px; color: var(--accent-3);
+  }
+
+  /* portrait (Markdown rendered) */
+  .portrait h3 { margin-top: 26px; color: var(--ink); }
+  .portrait p  { color: var(--ink-dim); }
+  .portrait em { color: var(--ink); font-style: normal; border-bottom: 1px dashed var(--border); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Me Talk</h1>
+  <p class="subhead">
+    基于 <strong id="kpi-total-inline">—</strong> 条本地留存的用户消息,从
+    <code>claude-code</code>、<code>opencode</code>、<code>kiro-cli</code>、<code>kiro-gui</code>、<code>trae</code>
+    的会话记录里还原出的、对着 AI 时的你。
+    <br/><small id="gen-at"></small>
+  </p>
+
+  <section class="grid g4">
+    <div class="card tight"><div class="stat-num" id="kpi-total">—</div><div class="stat-label">用户消息总数</div></div>
+    <div class="card tight"><div class="stat-num" id="kpi-days">—</div><div class="stat-label">有数据的天数</div></div>
+    <div class="card tight"><div class="stat-num" id="kpi-tools">—</div><div class="stat-label">有数据的工具数</div></div>
+    <div class="card tight"><div class="stat-num" id="kpi-avglen">—</div><div class="stat-label">平均每条消息字数</div></div>
+  </section>
+
+  <!-- === TL;DR: filled by AI === -->
+  <h2>一句话画像</h2>
+  <div class="card">
+    <p class="lede" style="margin:0" id="tldr">
+      <!--TLDR_PLACEHOLDER-->
+    </p>
+  </div>
+
+  <!-- === Radar === -->
+  <h2>你对 AI 说话时的维度</h2>
+  <p>每条消息按关键词被归进若干「语气/意图」桶。下面是各维度被触发的消息占比(同一条消息可能同时属于多个桶)。</p>
+  <div class="grid g2">
+    <div class="card"><canvas id="chart-radar"></canvas></div>
+    <div class="card">
+      <div id="trait-bars"></div>
+      <p style="margin-top:14px; font-size:13px;" id="trait-commentary">
+        <!--TRAIT_COMMENTARY_PLACEHOLDER-->
+      </p>
+    </div>
+  </div>
+
+  <!-- === Time === -->
+  <h2>你什么时候在跟 AI 说话</h2>
+  <div class="grid g2">
+    <div class="card"><h3>按小时</h3><canvas id="chart-hour"></canvas><p id="hour-commentary" style="margin-top:10px"></p></div>
+    <div class="card"><h3>按星期</h3><canvas id="chart-weekday"></canvas><p id="weekday-commentary" style="margin-top:10px"></p></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>按日期</h3>
+    <canvas id="chart-timeline"></canvas>
+    <p style="margin-top:8px" id="timeline-commentary">
+      <!--TIMELINE_COMMENTARY_PLACEHOLDER-->
+    </p>
+  </div>
+
+  <!-- === Tools === -->
+  <h2>你把哪个工具当成哪种工具</h2>
+  <div class="card"><canvas id="chart-tool-mix"></canvas></div>
+  <p id="tool-commentary"></p>
+
+  <!-- === Projects === -->
+  <h2>你到底在做什么项目</h2>
+  <div id="projects-bars" class="card"></div>
+  <p id="projects-commentary">
+    <!--PROJECTS_COMMENTARY_PLACEHOLDER-->
+  </p>
+
+  <!-- === Words === -->
+  <h2>你说得最多的词</h2>
+  <div class="grid g2">
+    <div class="card"><h3>中文(二元词)</h3><div id="wc-cn" class="word-cloud"></div></div>
+    <div class="card"><h3>英文</h3><div id="wc-en" class="word-cloud"></div></div>
+  </div>
+  <p id="words-commentary">
+    <!--WORDS_COMMENTARY_PLACEHOLDER-->
+  </p>
+
+  <!-- === Length === -->
+  <h2>一次你会说多长</h2>
+  <div class="card"><canvas id="chart-length"></canvas></div>
+  <p id="length-commentary"></p>
+
+  <!-- === Quotes (curated by AI) === -->
+  <h2>有代表性的你</h2>
+  <p>下面这些句子按「直白/纠偏/立规则/自嘲」等维度抽出来,用来还原一个有血有肉的你。</p>
+  <div id="quote-list"></div>
+
+  <!-- === Full portrait (AI Markdown) === -->
+  <h2>完整画像</h2>
+  <div class="portrait" id="portrait">
+    <!--PORTRAIT_PLACEHOLDER-->
+  </div>
+
+  <footer>
+    <p>
+      原始数据保留在 <code>raw/&lt;tool&gt;/messages.jsonl</code>,统计在 <code>analysis/stats.json</code>。<br/>
+      数据仅用于自我认知,不离开本机。
+    </p>
+  </footer>
+</main>
+
+<script id="stats-data" type="application/json">
+<!--STATS_JSON_PLACEHOLDER-->
+</script>
+<script id="quotes-data" type="application/json">
+<!--QUOTES_JSON_PLACEHOLDER-->
+</script>
+<script>
+(async function main() {
+  const d = JSON.parse(document.getElementById('stats-data').textContent);
+  const quotes = JSON.parse(document.getElementById('quotes-data').textContent);
+
+  Chart.defaults.color = '#c8cdd6';
+  Chart.defaults.borderColor = '#262e3d';
+
+  // --- KPI ---
+  document.getElementById('gen-at').textContent =
+    `统计生成于 ${new Date(d.generated_at).toLocaleString()}`;
+  document.getElementById('kpi-total').textContent = d.total_messages.toLocaleString();
+  document.getElementById('kpi-total-inline').textContent = d.total_messages.toLocaleString();
+  document.getElementById('kpi-days').textContent = d.timeline_by_date.length;
+  document.getElementById('kpi-tools').textContent =
+    Object.values(d.per_tool).filter(n => n > 0).length;
+
+  const mids = [5, 20, 60, 200, 600, 2000, 5000];
+  let wsum = 0, total = 0;
+  d.length_histogram.counts.forEach((c, i) => { wsum += c * mids[i]; total += c; });
+  document.getElementById('kpi-avglen').textContent = total ? Math.round(wsum / total) : 0;
+
+  // --- Render AI-authored Markdown (portrait + inline commentaries) ---
+  function renderMd(elId) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const raw = el.textContent || el.innerText;
+    if (!raw || !raw.trim()) return;
+    el.innerHTML = marked.parse(raw.trim());
+  }
+  ['tldr', 'trait-commentary', 'projects-commentary', 'words-commentary',
+   'timeline-commentary', 'portrait'].forEach(renderMd);
+
+  // --- Radar ---
+  const TRAITS = [
+    ['directness',        '直给'],
+    ['precision_request', '求精确'],
+    ['correct_ai',        '纠偏 AI'],
+    ['explore_mode',      '探索'],
+    ['design_mode',       '设计'],
+    ['debug_mode',        '调试'],
+    ['meta_rule',         '立规矩'],
+    ['thinking_aloud',    '边想边说'],
+    ['continue_request',  '催进度'],
+    ['self_deprecation',  '自嘲'],
+  ];
+  new Chart(document.getElementById('chart-radar'), {
+    type: 'radar',
+    data: {
+      labels: TRAITS.map(t => t[1]),
+      datasets: [{
+        label: '占比 (%)',
+        data: TRAITS.map(t => +(d.traits[t[0]] / d.total_messages * 100).toFixed(2)),
+        backgroundColor: 'rgba(122,183,255,0.25)',
+        borderColor: '#7ab7ff',
+        pointBackgroundColor: '#7ab7ff', pointRadius: 3,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          angleLines: { color: '#262e3d' }, grid: { color: '#262e3d' },
+          pointLabels: { color: '#c8cdd6', font: { size: 12 } },
+          ticks: { color: '#9aa4b2', backdropColor: 'transparent', showLabelBackdrop: false }
+        }
+      }
+    }
+  });
+
+  // --- Trait bars ---
+  const TRAIT_LABELS = {
+    directness: '直给', precision_request: '求精确', correct_ai: '纠偏 AI',
+    explore_mode: '探索', design_mode: '设计', debug_mode: '调试',
+    meta_rule: '立规矩', thinking_aloud: '边想边说', continue_request: '催进度',
+    stop_request: '叫停', self_deprecation: '自嘲', praise_ai: '夸 AI',
+    frustration: '吐槽', politeness: '客套', doc_mode: '写文档',
+    ai_coding_meta: 'AI 元话题', rust: 'Rust', cpp: 'C/C++', python: 'Python',
+    web_frontend: '前端',
+  };
+  const barsEl = document.getElementById('trait-bars');
+  const tArr = Object.entries(d.traits).sort((a, b) => b[1] - a[1]);
+  const excludeDomain = new Set(['rust', 'cpp', 'python', 'web_frontend', 'ai_coding_meta']);
+  const tMax = tArr.find(([k]) => !excludeDomain.has(k))?.[1] || 1;
+  tArr.filter(([k]) => !excludeDomain.has(k)).forEach(([k, v]) => {
+    const pct = (v / d.total_messages * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML =
+      `<div class="bar-label">${TRAIT_LABELS[k] || k}</div>` +
+      `<div class="bar-rest"><div class="bar-fill" style="width:${v / tMax * 100}%"></div></div>` +
+      `<div class="bar-val">${pct}% <small>(${v})</small></div>`;
+    barsEl.appendChild(row);
+  });
+
+  // --- Hour ---
+  new Chart(document.getElementById('chart-hour'), {
+    type: 'bar',
+    data: {
+      labels: Array.from({ length: 24 }, (_, h) => h + ':00'),
+      datasets: [{ label: '消息数', data: d.by_hour, backgroundColor: '#7ab7ff', borderRadius: 3 }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false } }, y: { grid: { color: '#262e3d' } } }
+    }
+  });
+  const peakHour = d.by_hour.indexOf(Math.max(...d.by_hour));
+  document.getElementById('hour-commentary').textContent = `高峰在 ${peakHour}:00 附近。`;
+
+  // --- Weekday ---
+  const wd = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  new Chart(document.getElementById('chart-weekday'), {
+    type: 'bar',
+    data: { labels: wd, datasets: [{ label: '消息数', data: d.by_weekday, backgroundColor: '#ffb86b', borderRadius: 3 }] },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false } }, y: { grid: { color: '#262e3d' } } }
+    }
+  });
+  const weekTotal = d.by_weekday.reduce((a, b) => a + b, 0) || 1;
+  const weekendRatio = (d.by_weekday[5] + d.by_weekday[6]) / weekTotal;
+  document.getElementById('weekday-commentary').textContent =
+    `周末占比 ${(weekendRatio * 100).toFixed(0)}%。`;
+
+  // --- Timeline ---
+  new Chart(document.getElementById('chart-timeline'), {
+    type: 'line',
+    data: {
+      labels: d.timeline_by_date.map(x => x.date),
+      datasets: [{
+        label: '消息数', data: d.timeline_by_date.map(x => x.count),
+        borderColor: '#c3f584', backgroundColor: 'rgba(195,245,132,0.15)',
+        borderWidth: 1.5, fill: true, tension: 0.2, pointRadius: 0,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12 }, grid: { display: false } },
+        y: { grid: { color: '#262e3d' } }
+      }
+    }
+  });
+
+  // --- Tool mix ---
+  const toolLabels = Object.keys(d.per_tool).filter(t => d.per_tool[t] > 0);
+  new Chart(document.getElementById('chart-tool-mix'), {
+    type: 'doughnut',
+    data: {
+      labels: toolLabels,
+      datasets: [{
+        data: toolLabels.map(t => d.per_tool[t]),
+        backgroundColor: ['#7ab7ff', '#ffb86b', '#c3f584', '#ff7a7a', '#b185ff'],
+      }]
+    },
+    options: { plugins: { legend: { position: 'right', labels: { color: '#c8cdd6' } } } }
+  });
+  const sorted = [...toolLabels].sort((a, b) => d.per_tool[b] - d.per_tool[a]);
+  const top1 = sorted[0], top2 = sorted[1];
+  const pct = k => Math.round(d.per_tool[k] / d.total_messages * 100);
+  document.getElementById('tool-commentary').innerHTML =
+    top2
+      ? `你用得最多的是 <strong>${top1}</strong>(${pct(top1)}%),其次 <strong>${top2}</strong>(${pct(top2)}%)。`
+      : `你用得最多的是 <strong>${top1}</strong>(${pct(top1)}%)。`;
+
+  // --- Projects ---
+  const pWrap = document.getElementById('projects-bars');
+  const ps = d.projects_top.filter(p => p.project !== 'unknown').slice(0, 15);
+  const pMax = Math.max(...ps.map(p => p.count)) || 1;
+  ps.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML =
+      `<div class="bar-label" style="flex-basis:260px">${p.project}</div>` +
+      `<div class="bar-rest"><div class="bar-fill" style="width:${p.count / pMax * 100}%"></div></div>` +
+      `<div class="bar-val">${p.count}</div>`;
+    pWrap.appendChild(row);
+  });
+
+  // --- Word clouds ---
+  function renderCloud(el, items, min = 12, max = 32) {
+    if (!items || !items.length) return;
+    const counts = items.map(i => i[1]);
+    const cMin = Math.min(...counts), cMax = Math.max(...counts);
+    items.forEach(([w, c]) => {
+      const size = min + (max - min) * (Math.log(c - cMin + 1) / Math.log(cMax - cMin + 1));
+      const op = 0.55 + 0.45 * (c - cMin) / (cMax - cMin || 1);
+      const s = document.createElement('span');
+      s.textContent = w;
+      s.style.fontSize = size.toFixed(1) + 'px';
+      s.style.opacity = op.toFixed(2);
+      s.title = `${w} × ${c}`;
+      el.appendChild(s);
+    });
+  }
+  renderCloud(document.getElementById('wc-cn'), d.top_cn.slice(0, 60));
+  renderCloud(
+    document.getElementById('wc-en'),
+    d.top_en.filter(([w]) => !['vscode', 'src', 'node_modules'].includes(w)).slice(0, 60)
+  );
+
+  // --- Length ---
+  new Chart(document.getElementById('chart-length'), {
+    type: 'bar',
+    data: {
+      labels: d.length_histogram.labels,
+      datasets: [{ label: '消息数', data: d.length_histogram.counts, backgroundColor: '#b185ff', borderRadius: 3 }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false } }, y: { grid: { color: '#262e3d' } } }
+    }
+  });
+  const short = d.length_histogram.counts[0] + d.length_histogram.counts[1] + d.length_histogram.counts[2];
+  document.getElementById('length-commentary').innerHTML =
+    `<strong>${(short / d.total_messages * 100).toFixed(0)}%</strong> 的消息短于 100 字。`;
+
+  // --- Quotes (AI curated) ---
+  const qEl = document.getElementById('quote-list');
+  (quotes || []).forEach(q => {
+    const b = document.createElement('blockquote');
+    b.innerHTML = `${q.text}<span class="src">— ${q.tag || ''}</span>`;
+    qEl.appendChild(b);
+  });
+})();
+</script>
+</body>
+</html>

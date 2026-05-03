@@ -1,0 +1,12 @@
+# Skill products — never commit user's extracted data
+raw/
+analysis/
+index.html
+*.skill
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+*.pyc
