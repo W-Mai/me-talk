@@ -199,35 +199,10 @@ def extract_claude_code(out_root: Path, root: Path | None = None):
 # 2. OpenCode
 # ---------------------------------------------------------------------------
 
-def extract_opencode(out_root: Path, root: Path | None = None):
-    root = root or (HOME / ".local/share/opencode/storage")
-    if not root.exists():
-        print("[opencode] no data dir — skipping", file=sys.stderr)
-        return
-    sessions = {}
-    for p in (root / "session").rglob("*.json"):
-        try:
-            s = json.loads(p.read_text("utf-8"))
-            sessions[s["id"]] = s
-        except Exception:
-            pass
-    by_ses: dict[str, list] = {}
-    for p in (root / "message").rglob("*.json"):
-        try:
-            m = json.loads(p.read_text("utf-8"))
-            by_ses.setdefault(m["sessionID"], []).append(m)
-        except Exception:
-            pass
-    parts_by_msg: dict[str, list] = {}
-    for p in (root / "part").rglob("*.json"):
-        try:
-            pr = json.loads(p.read_text("utf-8"))
-            parts_by_msg.setdefault(pr["messageID"], []).append(pr)
-        except Exception:
-            pass
-
+def _opencode_build_rows(sessions: dict, messages_by_ses: dict, parts_by_msg: dict) -> list:
+    """Given already-parsed opencode data, produce normalised turn rows."""
     rows = []
-    for sid, msgs in by_ses.items():
+    for sid, msgs in messages_by_ses.items():
         ses = sessions.get(sid, {})
         project = ses.get("directory")
         msgs.sort(key=lambda m: (m.get("time") or {}).get("created") or 0)
@@ -251,8 +226,126 @@ def extract_opencode(out_root: Path, root: Path | None = None):
                 "prev_ai": redact(trim(prev_ai)),
                 "next_ai": redact(trim(next_ai)),
             })
+    return rows
+
+
+def _opencode_read_sqlite(db_path: Path) -> tuple[dict, dict, dict]:
+    """Read opencode's new sqlite store (opencode.db, introduced in 1.14+)."""
+    sessions, messages_by_ses, parts_by_msg = {}, {}, {}
+    try:
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    except Exception as e:
+        print(f"  WARN opencode sqlite open failed: {e}", file=sys.stderr)
+        return sessions, messages_by_ses, parts_by_msg
+    try:
+        for row in con.execute("SELECT id, directory, title FROM session"):
+            sid, directory, title = row
+            sessions[sid] = {"id": sid, "directory": directory, "title": title}
+        for row in con.execute("SELECT id, session_id, data FROM message"):
+            mid, sid, data = row
+            try:
+                obj = json.loads(data)
+            except Exception:
+                continue
+            obj["id"] = mid
+            messages_by_ses.setdefault(sid, []).append(obj)
+        for row in con.execute("SELECT id, message_id, data FROM part"):
+            pid, mid, data = row
+            try:
+                obj = json.loads(data)
+            except Exception:
+                continue
+            parts_by_msg.setdefault(mid, []).append(obj)
+    finally:
+        con.close()
+    return sessions, messages_by_ses, parts_by_msg
+
+
+def _opencode_read_json(root: Path) -> tuple[dict, dict, dict]:
+    """Read opencode's legacy JSON store (pre-1.14)."""
+    sessions, messages_by_ses, parts_by_msg = {}, {}, {}
+    if not root.exists():
+        return sessions, messages_by_ses, parts_by_msg
+    for p in (root / "session").rglob("*.json"):
+        try:
+            s = json.loads(p.read_text("utf-8"))
+            sessions[s["id"]] = s
+        except Exception:
+            pass
+    for p in (root / "message").rglob("*.json"):
+        try:
+            m = json.loads(p.read_text("utf-8"))
+            messages_by_ses.setdefault(m["sessionID"], []).append(m)
+        except Exception:
+            pass
+    for p in (root / "part").rglob("*.json"):
+        try:
+            pr = json.loads(p.read_text("utf-8"))
+            parts_by_msg.setdefault(pr["messageID"], []).append(pr)
+        except Exception:
+            pass
+    return sessions, messages_by_ses, parts_by_msg
+
+
+def extract_opencode(out_root: Path, root: Path | None = None):
+    """
+    OpenCode 1.14+ keeps conversations in SQLite (opencode.db).
+    Pre-1.14 used one-JSON-file-per-{session,message,part}. Read both and
+    merge — the sqlite data wins on duplicate ids.
+    """
+    base = root or (HOME / ".local/share/opencode")
+    if not base.exists():
+        print("[opencode] no data dir — skipping", file=sys.stderr)
+        return
+
+    sqlite_db = base / "opencode.db"
+    legacy_root = base / "storage"
+
+    s_sqlite, m_sqlite, p_sqlite = ({}, {}, {})
+    if sqlite_db.exists():
+        s_sqlite, m_sqlite, p_sqlite = _opencode_read_sqlite(sqlite_db)
+
+    s_json, m_json, p_json = _opencode_read_json(legacy_root)
+
+    # merge — sqlite wins on duplicate session / message / part ids
+    sessions = {**s_json, **s_sqlite}
+    messages_by_ses: dict[str, list] = {}
+    for store in (m_json, m_sqlite):
+        for sid, msgs in store.items():
+            messages_by_ses.setdefault(sid, []).extend(msgs)
+    # dedupe messages by id within each session (prefer the later-merged entry
+    # by walking in reverse)
+    for sid, msgs in messages_by_ses.items():
+        seen, dedup = set(), []
+        for m in reversed(msgs):
+            mid = m.get("id")
+            if mid in seen:
+                continue
+            seen.add(mid)
+            dedup.append(m)
+        messages_by_ses[sid] = list(reversed(dedup))
+    parts_by_msg: dict[str, list] = {}
+    for store in (p_json, p_sqlite):
+        for mid, parts in store.items():
+            parts_by_msg.setdefault(mid, []).extend(parts)
+    # dedupe parts — key on (type, text) because the same part can have
+    # different ids in the legacy JSON store vs the sqlite store.
+    for mid, parts in parts_by_msg.items():
+        seen, dedup = set(), []
+        for p in parts:
+            key = (p.get("type"), p.get("text"), p.get("tool"))
+            if key in seen:
+                continue
+            seen.add(key)
+            dedup.append(p)
+        parts_by_msg[mid] = dedup
+
+    rows = _opencode_build_rows(sessions, messages_by_ses, parts_by_msg)
     rows.sort(key=lambda r: r["ts_ms"] or 0)
-    writeout(out_root, "opencode", rows)
+    writeout(out_root, "opencode", rows, {
+        "source_sqlite": sqlite_db.exists(),
+        "source_json": legacy_root.exists(),
+    })
 
 
 # ---------------------------------------------------------------------------
