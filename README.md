@@ -1,7 +1,9 @@
 # me-talk
 
-> A Claude Code / OpenCode **skill** that turns your chat history with AI coding
-> assistants into a quantitative, data-backed portrait of *how* you talk to AI.
+> A **Claude Code / OpenCode skill** that turns your chat history with AI
+> coding assistants — **Claude Code, OpenCode, Kiro CLI, Kiro GUI, Trae** —
+> into a quantitative, data-backed portrait of *how* you talk to AI. 100 %
+> local, bilingual (zh/en), self-reflection-grade.
 >
 > [中文](./README.zh.md)
 

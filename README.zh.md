@@ -1,7 +1,8 @@
 # me-talk
 
-> Claude Code / OpenCode 的 **skill**，读取你跟 AI 编程助手的聊天记录，
-> 聚合成量化统计，再由 AI 现写一份带数据锚点的性格画像。
+> **Claude Code / OpenCode skill**，读取你跟 **Claude Code、OpenCode、Kiro CLI、
+> Kiro GUI、Trae** 这 5 种 AI 编程助手的本地聊天记录，聚合成量化统计，
+> 再由 AI 现写一份带数据锚点的性格画像。100 % 本地处理、中英双语。
 >
 > [English](./README.md)
 
