@@ -2,6 +2,8 @@
 
 > A Claude Code / OpenCode **skill** that turns your chat history with AI coding
 > assistants into a quantitative, data-backed portrait of *how* you talk to AI.
+>
+> [中文](./README.zh.md)
 
 ---
 
@@ -195,22 +197,3 @@ or mix them freely. To extend: edit `PATTERNS` in `scripts/analyze.py`.
 ### License
 
 MIT — see [LICENSE](LICENSE).
-
----
-
-## 中文帮助段
-
-这是一个 Claude Code / OpenCode 的 skill,能够:
-
-1. **抽取**你跟 5 种 AI 编程助手(Claude Code / OpenCode / Kiro CLI / Kiro GUI / Trae)
-   本地留存的聊天记录中的用户发言
-2. **聚合**出语气、工作模式、协作方式等多个维度的统计
-3. **生成**一份由 AI 根据数字和原话现写的性格画像,附单页 HTML 可视化
-
-用法:在 agent 里说「分析下我跟 AI 的聊天记录」或「根据聊天记录给我画像」即可触发。
-agent 会按 `SKILL.md` 的四步流程跑完 extract → analyze → 写画像 → render。
-
-关键词可以是中文也可以是英文,关键词字典两边都兼容。
-
-**数据全部在本地处理,不会离开这台机器**。`.gitignore` 已经把 `raw/`、`analysis/`、
-`index.html` 都挡住了,想把项目推到 GitHub 不用额外操心。
