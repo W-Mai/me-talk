@@ -3,16 +3,92 @@
 > A Claude Code / OpenCode **skill** that turns your chat history with AI coding
 > assistants into a quantitative, data-backed portrait of *how* you talk to AI.
 
-`me-talk` harvests your user messages (plus the nearest AI reply for context)
-from the local storage of five AI coding tools, aggregates them into a set of
-behavioural traits (tone, collaboration mode, work mode), then produces a
-single-page HTML dashboard with charts + an AI-written narrative portrait.
+---
 
-Everything runs locally. No data leaves your machine.
+## 🤖 If you are an AI / code agent — start here
 
-![radar view](docs/screenshots/radar.png)
+You are about to use `me-talk`. The canonical entry point is
+[`SKILL.md`](./SKILL.md); this section is the 30-second version so you can
+decide whether to load it.
 
-## What it shows
+### What this skill does
+
+Harvests user messages from 5 AI coding tools' local storage, aggregates them
+into trait statistics, and renders a single-page HTML dashboard plus an
+AI-written narrative portrait.
+
+### The 4-step pipeline
+
+Run in order. Each step is a single command; the portrait step is where **you**
+do work.
+
+```bash
+# 1. extract (reads ~/.claude, ~/Library/..., etc; writes ./raw/)
+python3 {SKILL}/scripts/extract.py --output .
+
+# 2. aggregate (reads ./raw/, writes ./analysis/stats.json)
+python3 {SKILL}/scripts/analyze.py --output .
+
+# 3. write the portrait  ← YOUR job
+#    Read ./analysis/stats.json, sample ./raw/*/messages.jsonl (≥50 rows),
+#    then produce the files below following references/portrait-template.md:
+#      analysis/portrait.md       (8 sections, ~1000-1500 字)
+#      analysis/tldr.md           (2-4 sentences)
+#      analysis/quotes.json       ([{"text":"...", "tag":"..."}] × 8-12)
+#    Optional: analysis/{trait,timeline,projects,words}_commentary.md
+
+# 4. render (injects your .md into the template, writes ./index.html)
+python3 {SKILL}/scripts/render.py --output .
+```
+
+`{SKILL}` resolves to `~/.claude/skills/me-talk` under Claude Code, or
+`~/.agents/skills/me-talk` under OpenCode. Run from the user's current working
+directory — outputs always land in `$CWD`.
+
+### Hard rules for the portrait (step 3)
+
+These exist to stop the portrait from becoming LinkedIn fluff. Skipping them
+defeats the skill.
+
+1. **Every section must cite a number** from `stats.json` (percentage with one
+   decimal, or raw count).
+2. **Every section must embed a verbatim quote** from `raw/*/messages.jsonl`.
+   Copy the exact text — do not paraphrase, do not translate.
+3. **No value judgements.** Describe patterns ("politeness words appear 3
+   times total"), don't grade them ("you should be more polite").
+4. **No opening filler.** Don't write "综上所述" / "From the data we can see"
+   — go straight to the observation.
+5. **Check self-consistency.** If the user has a `CLAUDE.md` or `AGENTS.md`
+   declaring explicit rules ("don't write comments"), compare them against
+   actual behaviour in the data. Mismatches or matches are the best material.
+
+Full rules: [`references/portrait-template.md`](./references/portrait-template.md).
+
+### Trigger phrases
+
+English: *"analyse how I talk to AI"*, *"give me a portrait from my chat
+history"*, *"what does my AI chat reveal about me"*.
+
+Chinese: *"根据我和 AI 的聊天记录分析我的性格"*, *"我跟 AI 的说话风格画像"*,
+*"把我的 AI 聊天记录汇总一下"*.
+
+### What NOT to do
+
+- **Don't skip step 1–2.** The portrait depends on `stats.json` + actual
+  quotes; without the pipeline you'll hallucinate numbers.
+- **Don't write the portrait from memory.** Always read at least 50 rows from
+  `raw/*/messages.jsonl` — especially `notable_quotes` in `stats.json`.
+- **Don't touch raw data manually.** The extractors handle redaction of
+  `sk-*`, `Bearer *`, etc. Don't add "privacy-preserving" transforms; the user
+  opted in to seeing their own paths and project names.
+- **Don't commit any output.** The skill's `.gitignore` excludes `raw/`,
+  `analysis/`, `index.html`. If the user wants to persist, they'll handle it.
+
+---
+
+## 🧑 If you are a human — read on
+
+### What it shows
 
 - **KPI row** — total messages, days with data, tools used, average message length
 - **Trait radar + bar chart** — directness, correction, precision requests,
@@ -22,11 +98,11 @@ Everything runs locally. No data leaves your machine.
 - **Projects** — top directories the conversations happened in
 - **Word clouds** — Chinese bigrams + English words
 - **Length histogram** — how verbose each message tends to be
-- **Quotes + full portrait** — AI-written, backed by the numbers
+- **Quotes + full portrait** — AI-written, grounded in the numbers
 
-![length histogram](docs/screenshots/length.png)
+![radar view](docs/screenshots/radar.png)
 
-## Supported tools
+### Supported tools
 
 | Tool | Source of truth |
 |---|---|
@@ -38,7 +114,7 @@ Everything runs locally. No data leaves your machine.
 
 Paths are macOS-style. Linux/Windows paths haven't been tested yet.
 
-## Install
+### Install
 
 Clone into the skills directory your agent reads:
 
@@ -60,34 +136,17 @@ ln -s ~/src/me-talk ~/.agents/skills/me-talk
 
 Requires Python 3.10+. No third-party packages.
 
-## Usage
+### Usage
 
 Once installed, just ask your agent:
 
 > 帮我分析一下我跟 AI 的聊天记录 / analyse how I talk to Claude
 
-The agent will read `SKILL.md` and drive the pipeline. If you want to run it
-manually:
+The agent reads `SKILL.md` and drives the pipeline. To run manually, follow the
+4 commands in the "If you are an AI" section above — they're the same commands
+an agent would run.
 
-```bash
-mkdir -p ~/my-portrait && cd ~/my-portrait
-
-# 1. harvest messages from local storage
-python3 ~/.claude/skills/me-talk/scripts/extract.py --output .
-
-# 2. aggregate into stats
-python3 ~/.claude/skills/me-talk/scripts/analyze.py --output .
-
-# 3. (agent step) write analysis/portrait.md + tldr.md + quotes.json
-#    following references/portrait-template.md
-
-# 4. render the dashboard
-python3 ~/.claude/skills/me-talk/scripts/render.py --output .
-
-open index.html   # or: python3 -m http.server 8000 && open http://localhost:8000
-```
-
-## Output layout
+### Output layout
 
 ```
 ./raw/<tool>/messages.jsonl     # normalised user turns + nearest AI context
@@ -97,43 +156,43 @@ open index.html   # or: python3 -m http.server 8000 && open http://localhost:800
 ./analysis/tldr.md              # one-paragraph summary (AI-written)
 ./analysis/quotes.json          # curated punchy lines
 ./analysis/*_commentary.md      # inline notes next to charts (AI-written, optional)
-./index.html                    # standalone dashboard, no server needed after first load
+./index.html                    # standalone dashboard
 ```
 
-## Privacy
+![length histogram](docs/screenshots/length.png)
+
+### Privacy
 
 - All extraction and rendering runs **locally**.
 - Light redaction covers `sk-*`, `Bearer *`, `access_token`, `ghp_*`, and
-  common Slack/feishu token shapes. Paths, project names, and everything else
-  are preserved — this is your private workspace.
-- The skill repo itself contains **no user data**. Generated `raw/`, `analysis/`,
-  and `index.html` are in `.gitignore` at the skill level; your own project
-  directory is yours to manage.
+  common Slack / feishu token shapes. Paths, project names, and everything
+  else are preserved — this is your private workspace.
+- The skill repo itself contains **no user data**. Generated `raw/`,
+  `analysis/`, and `index.html` are in `.gitignore` at the skill level.
 - Screenshots in this README come from the author's real data — they expose
   high-level trait percentages (e.g. "8.7% correction"), not conversation
   content.
 
-## Patterns are bilingual
+### Patterns are bilingual
 
 The trait-detection regex dictionary covers **Chinese and English in
 parallel**, so you get meaningful output whether you prompt in 中文, English,
 or mix them freely. To extend: edit `PATTERNS` in `scripts/analyze.py`.
 
-## Design notes
+### Design notes
 
 - **Stats are deterministic, portrait is AI-authored.** The same raw data
   always yields the same `stats.json`; the portrait is rewritten per run so it
   stays grounded in current numbers instead of a canned template.
-- **Portrait has hard rules.** `references/portrait-template.md` enforces:
-  every section must cite a number from `stats.json`, every section must
-  include a verbatim quote from `raw/`, no value judgements, no corporate
-  filler. This is how you avoid LinkedIn-style fluff.
+- **Portrait has hard rules.** `references/portrait-template.md` enforces that
+  every section cites a number, includes a verbatim quote, and avoids value
+  judgements — that's how you stop it from turning into LinkedIn filler.
 - **Kiro GUI gotcha.** The `.chat` files are full-session snapshots, not
   append-only logs, so the same turn appears in thousands of files. The
-  extractor deduplicates on `(user_text[:300], session_id)` — expect a
-  ~40× reduction from raw file count to final turn count.
+  extractor deduplicates on `(user_text[:300], session_id)` — expect a ~40×
+  reduction from raw file count to final turn count.
 
-## License
+### License
 
 MIT — see [LICENSE](LICENSE).
 
@@ -151,7 +210,7 @@ MIT — see [LICENSE](LICENSE).
 用法:在 agent 里说「分析下我跟 AI 的聊天记录」或「根据聊天记录给我画像」即可触发。
 agent 会按 `SKILL.md` 的四步流程跑完 extract → analyze → 写画像 → render。
 
-关键字可以是中文也可以是英文,关键词字典两边都兼容。
+关键词可以是中文也可以是英文,关键词字典两边都兼容。
 
-**数据全部在本地处理,不会离开这台机器**。想推送到 GitHub 做公开 repo 的话,
-`.gitignore` 已经把 `raw/` `analysis/` `index.html` 都挡住了,不用担心。
+**数据全部在本地处理,不会离开这台机器**。`.gitignore` 已经把 `raw/`、`analysis/`、
+`index.html` 都挡住了,想把项目推到 GitHub 不用额外操心。
