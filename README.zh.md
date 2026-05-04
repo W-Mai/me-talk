@@ -101,7 +101,7 @@ history"*, *"what does my AI chat reveal about me"*.
 | `kiro-gui`    | `~/Library/Application Support/Kiro/User/globalStorage/kiro.kiroagent/*.chat` |
 | `trae`        | `~/Library/Application Support/Trae/User/workspaceStorage/*/state.vscdb` |
 
-路径都是 macOS 风格，Linux / Windows 还没测过。
+路径都是 macOS 风格，Linux / Windows 还没测过 —— 如果你是 code agent 跑在别的系统上，可以自行探测对应位置、顺手把 extractor 改好。
 
 ### 安装
 
